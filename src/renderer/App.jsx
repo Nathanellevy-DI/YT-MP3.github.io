@@ -4,68 +4,6 @@ import PlaylistInput from './components/PlaylistInput';
 import TrackList from './components/TrackList';
 import ProgressPanel from './components/ProgressPanel';
 
-// Standalone Web Mock for GitHub Pages
-if (!window.electronAPI) {
-    window.electronAPI = {
-        _progressCb: null,
-        onProgress: (cb) => {
-            window.electronAPI._progressCb = cb;
-            return () => { window.electronAPI._progressCb = null; };
-        },
-        onZipProgress: (cb) => { return () => { }; },
-        fetchPlaylist: async (url) => {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve({
-                        success: true,
-                        title: "Web Demo Playlist",
-                        tracks: [
-                            { id: "1", title: "Never Gonna Give You Up", duration: "03:32" },
-                            { id: "2", title: "Darude - Sandstorm", duration: "03:52" },
-                            { id: "3", title: "Rick Roll (Extended)", duration: "10:00" },
-                        ]
-                    });
-                }, 1500);
-            });
-        },
-        downloadPlaylist: async (tracks) => {
-            return new Promise(resolve => {
-                let completed = 0;
-                const total = tracks.length;
-
-                const processTrack = (index) => {
-                    if (index >= total) {
-                        resolve({ success: true });
-                        return;
-                    }
-
-                    const t = tracks[index];
-                    if (window.electronAPI._progressCb) {
-                        window.electronAPI._progressCb({ title: t.title, trackId: t.id, status: 'downloading', completed, total });
-                    }
-
-                    setTimeout(() => {
-                        completed++;
-                        if (window.electronAPI._progressCb) {
-                            window.electronAPI._progressCb({ title: t.title, trackId: t.id, status: 'done', completed, total });
-                        }
-                        processTrack(index + 1);
-                    }, 2000);
-                };
-
-                processTrack(0);
-            });
-        },
-        saveZip: async () => {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve({ success: true, path: "/virtual/demo/playlist.zip (Mocked)" });
-                }, 1500);
-            });
-        }
-    };
-}
-
 const PHASE = {
     INPUT: 'input',
     FETCHING: 'fetching',

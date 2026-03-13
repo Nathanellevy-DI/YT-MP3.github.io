@@ -1,0 +1,71 @@
+{
+  "name": "yt-mp3",
+  "version": "1.0.0",
+  "description": "YouTube Playlist Downloader – Convert playlists to MP3 and bundle as ZIP",
+  "main": "main.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "watch": "webpack --mode development --watch",
+    "start": "npm run build && electron .",
+    "dev": "concurrently \"npm run watch\" \"sleep 3 && electron .\"",
+    "dist": "npm run build && electron-builder --mac"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "archiver-utils": "^5.0.2",
+    "zip-stream": "^7.0.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-react": "^7.23.3",
+    "babel-loader": "^9.1.3",
+    "concurrently": "^8.2.2",
+    "css-loader": "^6.10.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^25.1.8",
+    "html-webpack-plugin": "^5.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "style-loader": "^3.3.4",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "build": {
+    "appId": "com.ytmp3.app",
+    "productName": "YT-MP3",
+    "directories": {
+      "output": "release"
+    },
+    "asar": false,
+    "extraResources": [
+      {
+        "from": "bin/",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.music",
+      "target": "dmg",
+      "icon": null
+    },
+    "dmg": {
+      "title": "YT-MP3",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}

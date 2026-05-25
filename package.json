@@ -8,11 +8,14 @@
     "watch": "webpack --mode development --watch",
     "start": "npm run build && electron .",
     "dev": "concurrently \"npm run watch\" \"sleep 3 && electron .\"",
-    "dist": "npm run build && electron-builder --mac"
+    "dist": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:all": "npm run build && electron-builder --mac --win"
   },
   "dependencies": {
     "archiver": "^7.0.1",
     "archiver-utils": "^5.0.2",
+    "wavesurfer.js": "^7.12.2",
     "zip-stream": "^7.0.2"
   },
   "devDependencies": {
@@ -24,6 +27,7 @@
     "css-loader": "^6.10.0",
     "electron": "^28.3.3",
     "electron-builder": "^25.1.8",
+    "gh-pages": "^6.3.0",
     "html-webpack-plugin": "^5.6.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -38,19 +42,40 @@
       "output": "release"
     },
     "asar": false,
-    "extraResources": [
-      {
-        "from": "bin/",
-        "to": "bin",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
     "mac": {
       "category": "public.app-category.music",
       "target": "dmg",
-      "icon": null
+      "icon": null,
+      "extraResources": [
+        {
+          "from": "bin/mac/",
+          "to": "bin",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": null,
+      "extraResources": [
+        {
+          "from": "bin/win/",
+          "to": "bin",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "dmg": {
       "title": "YT-MP3",

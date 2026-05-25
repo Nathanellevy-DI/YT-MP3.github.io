@@ -3,6 +3,8 @@ import Header from './components/Header';
 import PlaylistInput from './components/PlaylistInput';
 import TrackList from './components/TrackList';
 import ProgressPanel from './components/ProgressPanel';
+import FormatSelection from './components/FormatSelection';
+import ArtworkSelection from './components/ArtworkSelection';
 
 const PHASE = {
     INPUT: 'input',
@@ -23,6 +25,15 @@ export default function App() {
     const [currentTrack, setCurrentTrack] = useState('');
     const [error, setError] = useState('');
     const [savedPath, setSavedPath] = useState('');
+
+    const [format, setFormat] = useState('12_black');
+    const [quantity, setQuantity] = useState(1);
+    const [jacketFront, setJacketFront] = useState(null);
+    const [jacketBack, setJacketBack] = useState(null);
+    const [diskFront, setDiskFront] = useState(null);
+    const [diskBack, setDiskBack] = useState(null);
+    const [labelA, setLabelA] = useState(null);
+    const [labelB, setLabelB] = useState(null);
 
     // ── IPC Listeners ────────────────────────────────
     useEffect(() => {
@@ -54,13 +65,57 @@ export default function App() {
 
         if (result.success) {
             setPlaylistTitle(result.title);
-            setTracks(result.tracks);
+            // Initialize tracks with 0 trimStartMs, trimEndMs, and assign default sides (A for first half, B for second)
+            const midpoint = Math.ceil(result.tracks.length / 2);
+            const initializedTracks = result.tracks.map((t, index) => ({
+                ...t,
+                trimStartMs: 0,
+                trimEndMs: 0,
+                side: index < midpoint ? 'A' : 'B'
+            }));
+            setTracks(initializedTracks);
             setTrackStatuses({});
             setPhase(PHASE.READY);
         } else {
             setError(result.error || 'Failed to fetch playlist.');
             setPhase(PHASE.INPUT);
         }
+    }, []);
+
+    const handleTrackChange = useCallback((id, field, value) => {
+        setTracks(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
+    }, []);
+
+    const handleTrackSideChange = useCallback((id, newSide) => {
+        setTracks(prev => prev.map(t => t.id === id ? { ...t, side: newSide } : t));
+    }, []);
+
+    const handleTrackMove = useCallback((id, direction) => {
+        setTracks(prev => {
+            const index = prev.findIndex(t => t.id === id);
+            if (index < 0) return prev;
+
+            const targetTrack = prev[index];
+            // Find all tracks on the same side
+            const sideTracks = prev.filter(t => t.side === targetTrack.side);
+            const sideIndex = sideTracks.findIndex(t => t.id === id);
+
+            if (direction === 'up' && sideIndex > 0) {
+                const swapWithId = sideTracks[sideIndex - 1].id;
+                const prevIndex = prev.findIndex(t => t.id === swapWithId);
+                const newTracks = [...prev];
+                // Swap in the main array to preserve global order memory
+                [newTracks[index], newTracks[prevIndex]] = [newTracks[prevIndex], newTracks[index]];
+                return newTracks;
+            } else if (direction === 'down' && sideIndex < sideTracks.length - 1) {
+                const swapWithId = sideTracks[sideIndex + 1].id;
+                const nextIndex = prev.findIndex(t => t.id === swapWithId);
+                const newTracks = [...prev];
+                [newTracks[index], newTracks[nextIndex]] = [newTracks[nextIndex], newTracks[index]];
+                return newTracks;
+            }
+            return prev;
+        });
     }, []);
 
     // ── Download All ─────────────────────────────────
@@ -71,7 +126,17 @@ export default function App() {
         setTotal(tracks.length);
         setCurrentTrack('');
 
-        const result = await window.electronAPI.downloadPlaylist(tracks);
+        const result = await window.electronAPI.downloadPlaylist({
+            tracks,
+            format,
+            quantity,
+            jacketFront,
+            jacketBack,
+            diskFront,
+            diskBack,
+            labelA,
+            labelB
+        });
 
         if (result.success) {
             setPhase(PHASE.ZIPPING);
@@ -88,7 +153,7 @@ export default function App() {
             setError(result.error || 'Download failed.');
             setPhase(PHASE.READY);
         }
-    }, [tracks]);
+    }, [tracks, format, quantity, jacketFront, jacketBack, diskFront, diskBack, labelA, labelB]);
 
     // ── Reset ────────────────────────────────────────
     const handleReset = useCallback(() => {
@@ -127,11 +192,69 @@ export default function App() {
 
                 {/* Track List */}
                 {tracks.length > 0 && phase !== PHASE.COMPLETE && (
-                    <TrackList
-                        tracks={tracks}
-                        trackStatuses={trackStatuses}
-                        playlistTitle={playlistTitle}
-                    />
+                    <>
+                        <FormatSelection
+                            format={format} setFormat={setFormat}
+                            quantity={quantity} setQuantity={setQuantity}
+                        />
+
+                        <ArtworkSelection
+                            title={format === '7_inch' ? 'Jacket Front Artwork (2185x2185)' : 'Outer Jacket Front (3675x3675)'}
+                            targetSize={format === '7_inch' ? 2185 : 3675}
+                            tracks={tracks}
+                            onArtworkProcessed={setJacketFront}
+                        />
+
+                        <ArtworkSelection
+                            title={format === '7_inch' ? 'Jacket Back Artwork (2185x2185)' : 'Outer Jacket Back (3675x3675)'}
+                            targetSize={format === '7_inch' ? 2185 : 3675}
+                            tracks={tracks}
+                            onArtworkProcessed={setJacketBack}
+                        />
+
+                        {format !== '12_color' && (
+                            <>
+                                <ArtworkSelection
+                                    title="Record Label A (1200x1200)"
+                                    targetSize={1200}
+                                    shape="label"
+                                    onArtworkProcessed={setLabelA}
+                                />
+                                <ArtworkSelection
+                                    title="Record Label B (1200x1200)"
+                                    targetSize={1200}
+                                    shape="label"
+                                    onArtworkProcessed={setLabelB}
+                                />
+                            </>
+                        )}
+
+                        {format === '12_color' && (
+                            <>
+                                <ArtworkSelection
+                                    title="Picture Disk Front (3540x3540)"
+                                    targetSize={3540}
+                                    shape="disk"
+                                    onArtworkProcessed={setDiskFront}
+                                />
+                                <ArtworkSelection
+                                    title="Picture Disk Back (3540x3540)"
+                                    targetSize={3540}
+                                    shape="disk"
+                                    onArtworkProcessed={setDiskBack}
+                                />
+                            </>
+                        )}
+
+                        <TrackList
+                            tracks={tracks}
+                            trackStatuses={trackStatuses}
+                            playlistTitle={playlistTitle}
+                            onTrackChange={handleTrackChange}
+                            onTrackMove={handleTrackMove}
+                            onTrackSideChange={handleTrackSideChange}
+                        />
+                    </>
                 )}
 
                 {/* Progress Panel */}
